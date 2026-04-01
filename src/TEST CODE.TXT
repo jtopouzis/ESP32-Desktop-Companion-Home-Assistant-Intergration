@@ -1,0 +1,88 @@
+ha_interface.cpp
+
+
+#include "ha_interface.h"
+#include "mqtt_manager.h"
+#include <FluxGarage_RoboEyes.h>
+#include <Adafruit_SH110X.h>
+#include "ha_config.h"
+
+static RoboEyes<Adafruit_SH1106G>* roboEyes = nullptr;
+
+// ---------------- DEVICE JSON ----------------
+String deviceJson(const char* name, const char* id_suffix) {
+    return String("{") +
+           "\"identifiers\":[\"" DEVICE_ID "_" + String(id_suffix) + "\"]," +
+           "\"name\":\"" + String(name) + "\"," +
+           "\"model\":\"" DEVICE_MODEL "\"," +
+           "\"manufacturer\":\"" DEVICE_MANUFACTURER "\"" +
+           "}";
+}
+
+// ---------------- TOUCH DISCOVERY ----------------
+void publishTouchDiscovery() {
+
+    // SINGLE TAP
+    {
+        String topic = "homeassistant/device_automation/mochi_touch_single/config";
+        String payload = String("{") +
+            "\"automation_type\":\"trigger\"," +
+            "\"type\":\"action\"," +
+            "\"subtype\":\"single\"," +
+            "\"topic\":\"mochi/touch/single\"," +
+            "\"device\":" + deviceJson("Mochi Robot Single Tap","single") +
+        "}";
+        Serial.println(payload);
+        mqttPublish(topic.c_str(), payload.c_str(), true);
+    }
+
+    // // DOUBLE TAP
+    // {
+    //     String topic = "homeassistant/device_automation/mochi_touch_double/config";
+    //     String payload = String("{") +
+    //         "\"automation_type\":\"trigger\"," +
+    //         "\"type\":\"action\"," +
+    //         "\"subtype\":\"double\"," +
+    //         "\"topic\":\"mochi/touch/double\"," +
+    //         "\"device\":" + deviceJson("Mochi Robot Double Tap","double") +
+    //     "}";
+    //     Serial.println(payload);
+    //     mqttPublish(topic.c_str(), payload.c_str(), true);
+    // }
+
+    // // LONG PRESS
+    // {
+    //     String topic = "homeassistant/device_automation/mochi_touch_long/config";
+    //     String payload = String("{") +
+    //         "\"automation_type\":\"trigger\"," +
+    //         "\"type\":\"action\"," +
+    //         "\"subtype\":\"long\"," +
+    //         "\"topic\":\"mochi/touch/long\"," +
+    //         "\"device\":" + deviceJson("Mochi Robot Long Press","long") +
+    //     "}";
+    //     Serial.println(payload);
+    //     mqttPublish(topic.c_str(), payload.c_str(), true);
+    // }
+}
+
+// ---------------- HA INIT ----------------
+template <typename T>
+void haInit(RoboEyes<T>* eyes) {
+    roboEyes = eyes;
+    publishTouchDiscovery();
+    mqttPublish(STATUS_TOPIC, "online", true); // retain status
+}
+
+// Explicit instantiation
+template void haInit(RoboEyes<Adafruit_SH1106G>* eyes);
+
+// ---------------- SEND TOUCH EVENT ----------------
+void haPublishTouch(const char* event) {
+    String topic = String(TOUCH_TOPIC) + "/" + String(event); // single/double/long
+    mqttPublish(topic.c_str(), "pressed", false);
+}
+
+// ---------------- HANDLE COMMANDS ----------------
+void haHandleMessage(char* topic, String payload) {
+    // parse animations/sounds later
+}
